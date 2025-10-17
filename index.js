@@ -3,70 +3,128 @@ admin.initializeApp({ projectId: "goodscore-staging" });
 
 const db = admin.firestore();
 
-// Helper function to process a single batch within a chunk
-async function processBatch(batchData, batchNumber, chunkNumber) {
-  try {
-    const batch = db.batch();
-    
-    for (const doc of batchData) {
-      const documentId = doc.id;
-      const retryDocRef = db.collection('goodscore-subscription-retries').doc();
-      
-      batch.set(retryDocRef, {
-        deductionMonth: "October_2025",
-        cycle: 1,
-        parentAutopayId: documentId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+// Helper function to filter and deduplicate documents
+function filterAndDeduplicateDocuments(documents) {
+  const seenParentAutopayIds = new Set();
+  const filteredDocuments = [];
+  let duplicatesRemoved = 0;
+  let constraintFiltered = 0;
+
+  for (const doc of documents) {
+    const transactionData = doc.data();
+    const parentAutopayId = transactionData.parentAutopayId;
+    const deductionMonth = transactionData.autopayInfo?.deductionMonth;
+    const cycle = transactionData.autopayInfo?.cycle;
+
+    // Check for duplicates by parentAutopayId
+    if (seenParentAutopayIds.has(parentAutopayId)) {
+      duplicatesRemoved++;
+      continue;
     }
 
-    await batch.commit();
-    console.log(`Chunk ${chunkNumber} - Batch ${batchNumber} committed successfully (${batchData.length} documents)`);
-    return { success: true, batchNumber, count: batchData.length };
+    // Apply constraints: deductionMonth must be "October_2025" and cycle must be 1
+    if (deductionMonth !== "October_2025" || cycle !== 1) {
+      constraintFiltered++;
+      continue;
+    }
+
+    // Document passes all filters
+    seenParentAutopayIds.add(parentAutopayId);
+    filteredDocuments.push({
+      docId: doc.id,
+      parentAutopayId,
+      deductionMonth,
+      cycle
+    });
+  }
+
+  return {
+    filteredDocuments,
+    duplicatesRemoved,
+    constraintFiltered,
+    totalFiltered: duplicatesRemoved + constraintFiltered
+  };
+}
+
+// Helper function to save a single document
+async function saveDocument(docData, docIndex, chunkNumber) {
+  try {
+    const retryDocRef = db.collection('goodscore-subscription-retries').doc();
+    
+    await retryDocRef.set({
+      deductionMonth: docData.deductionMonth,
+      cycle: docData.cycle,
+      parentAutopayId: docData.parentAutopayId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return { success: true, docIndex, parentAutopayId: docData.parentAutopayId };
   } catch (error) {
-    console.error(`Error in Chunk ${chunkNumber} - Batch ${batchNumber}:`, error);
-    return { success: false, batchNumber, error };
+    console.error(`Error saving document ${docIndex} in Chunk ${chunkNumber}:`, error);
+    return { success: false, docIndex, error, parentAutopayId: docData.parentAutopayId };
   }
 }
 
 // Helper function to process a chunk of 1000 documents concurrently
 async function processChunk(documents, chunkNumber) {
-  const batchSize = 500;
-  const batches = [];
+  console.log(`Chunk ${chunkNumber}: Starting filtering and deduplication...`);
   
-  // Split chunk into batches of 500
-  for (let i = 0; i < documents.length; i += batchSize) {
-    const batchData = documents.slice(i, i + batchSize);
-    const batchNumber = Math.floor(i / batchSize) + 1;
-    batches.push({ data: batchData, batchNumber });
+  // Filter and deduplicate documents
+  const filterResult = filterAndDeduplicateDocuments(documents);
+
+  // If no documents remain after filtering, skip processing
+  if (filterResult.filteredDocuments.length === 0) {
+    console.log(`Chunk ${chunkNumber}: No documents to process after filtering`);
+    return { 
+      successfulDocuments: 0, 
+      totalDocuments: 0, 
+      totalDocumentsProcessed: 0,
+      duplicatesRemoved: filterResult.duplicatesRemoved,
+      constraintFiltered: filterResult.constraintFiltered
+    };
   }
 
-  console.log(`Chunk ${chunkNumber}: Processing ${documents.length} documents in ${batches.length} batches concurrently`);
+  console.log(`Chunk ${chunkNumber}: Processing ${filterResult.filteredDocuments.length} filtered documents concurrently`);
 
-  // Process all batches in this chunk concurrently
-  const batchPromises = batches.map(({ data, batchNumber }) => 
-    processBatch(data, batchNumber, chunkNumber)
+  // Process all documents in this chunk concurrently - each document saved individually
+  const documentPromises = filterResult.filteredDocuments.map((docData, index) => 
+    saveDocument(docData, index + 1, chunkNumber)
   );
 
-  const results = await Promise.allSettled(batchPromises);
+  const results = await Promise.allSettled(documentPromises);
   
   // Process results
-  let successfulBatches = 0;
+  let successfulDocuments = 0;
   let totalDocumentsProcessed = 0;
+  let failedDocuments = [];
   
   results.forEach((result, index) => {
     if (result.status === 'fulfilled' && result.value.success) {
-      successfulBatches++;
-      totalDocumentsProcessed += result.value.count;
+      successfulDocuments++;
+      totalDocumentsProcessed++;
     } else {
-      console.error(`Chunk ${chunkNumber} - Batch ${batches[index].batchNumber} failed:`, 
-        result.status === 'rejected' ? result.reason : result.value.error);
+      const error = result.status === 'rejected' ? result.reason : result.value.error;
+      const parentAutopayId = result.status === 'fulfilled' ? result.value.parentAutopayId : 'unknown';
+      failedDocuments.push({ index: index + 1, parentAutopayId, error });
     }
   });
 
-  console.log(`Chunk ${chunkNumber} completed: ${successfulBatches}/${batches.length} batches successful, ${totalDocumentsProcessed} documents processed`);
+  if (failedDocuments.length > 0) {
+    console.log(`Chunk ${chunkNumber}: ${failedDocuments.length} documents failed to save:`);
+    failedDocuments.forEach(({ index, parentAutopayId, error }) => {
+      console.log(`  - Document ${index} (parentAutopayId: ${parentAutopayId}): ${error.message || error}`);
+    });
+  }
+
+  console.log(`Chunk ${chunkNumber} completed: ${successfulDocuments}/${filterResult.filteredDocuments.length} documents saved successfully`);
   
-  return { successfulBatches, totalBatches: batches.length, totalDocumentsProcessed };
+  return { 
+    successfulDocuments, 
+    totalDocuments: filterResult.filteredDocuments.length, 
+    totalDocumentsProcessed,
+    duplicatesRemoved: filterResult.duplicatesRemoved,
+    constraintFiltered: filterResult.constraintFiltered
+  };
 }
 
 async function runQuery() {
@@ -85,9 +143,8 @@ async function runQuery() {
       
       // Fetch next 1000 documents
       let query = db.collection('transactions')
-                    .where("parentAutopayId", "==", "")
-                    .where("status", "==", "PAYMENT_SUCCESS")
-                    .where("createdAt", ">=", new Date("2025-10-03"))
+                    .where("parentAutopayId", "!=", "")
+                    .where("createdAt", ">=", new Date("2025-10-02"))
                     .orderBy("createdAt")
                     .limit(chunkSize);
 
@@ -122,8 +179,8 @@ async function runQuery() {
 
     console.log(`\n=== Final Results ===`);
     console.log(`Total chunks processed: ${totalChunksProcessed}`);
-    console.log(`Total documents processed: ${totalDocumentsProcessed}`);
-    console.log("All chunks processed successfully!");
+    console.log(`Total documents saved: ${totalDocumentsProcessed}`);
+    console.log("✅ All chunks processed successfully!");
 
   } catch (error) {
     console.error("Error in runQuery:", error);
