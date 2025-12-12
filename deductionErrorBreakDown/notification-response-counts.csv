@@ -1,0 +1,14 @@
+code,message,count
+"NO_CODE","NO_MESSAGE",98309
+"INVALID_SUBSCRIPTION_STATE","Invalid Subscription State",1179
+"SUCCESS","Your request has been successfully submitted",1120
+"INVALID_SUBSCRIPTION_STATE","Failed to process request. Current subscription state is REVOKED",283
+"INTERNAL_SERVER_ERROR","There is an error trying to process your transaction at the moment. Please try again in a while.",152
+"INTERNAL_SERVER_ERROR","Exception: INTERNAL_SERVER_ERROR Response: [code: 500, body: {""message"":""MerchantMandateException: "",""error"":true,""retryable"":false}]",103
+"INVALID_SUBSCRIPTION_STATE","Failed to process request. Current subscription state is REVOKE_IN_PROGRESS",33
+"INVALID_SUBSCRIPTION_STATE","Failed to process request. Current subscription state is PAUSED",4
+"MERCHANT_MANDATE_SERVICE_ERROR","Merchant mandate service error",3
+"SUBSCRIPTION_NOT_FOUND","No Subscription found with the given details.",3
+"INVALID_SUBSCRIPTION_STATE","Failed to process request. Current subscription state is CANCELLED",2
+"INVALID_SUBSCRIPTION_STATE","Failed to process request. Current subscription state is FAILED",2
+"ORDER_ENTITY_DAO_EXCEPTION","Your request has been failed.",1

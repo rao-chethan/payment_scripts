@@ -1,0 +1,112 @@
+{
+  "userId": "fWt5sNMjuXAq9avwjSvZ",
+  "phoneNumber": "9538886263",
+  "amount": 100,
+  "pg": "phonepe_v2",
+  "product": "GoodScoreSubscription",
+  "createdAt": {
+    "_seconds": 1761198658,
+    "_nanoseconds": 815000000
+  },
+  "parentAutopayId": "",
+  "targetApp": "com.phonepe.app",
+  "mandateAmount": 100,
+  "validity": 30,
+  "trial": false,
+  "merchantId": "ARTHVITONLINE",
+  "fullMoneyReturnUser": false,
+  "deviceOS": "ANDROID",
+  "merchantOrderId": "MO1761198658948kg1jo77fw",
+  "pgOrderId": "OMO2510231120590305411700",
+  "pgResponse": {
+    "merchantId": "ARTHVITONLINE",
+    "merchantOrderId": "MO1761198658948kg1jo77fw",
+    "orderId": "OMO2510231120590305411700",
+    "state": "COMPLETED",
+    "amount": 100,
+    "expireAt": 1761199258948,
+    "metaInfo": {
+      "udf1": "fWt5sNMjuXAq9avwjSvZ",
+      "udf2": "GoodScoreSubscription",
+      "udf3": "8trvB2ToNcIDqdaHWcDQ"
+    },
+    "paymentFlow": {
+      "type": "SUBSCRIPTION_SETUP",
+      "merchantSubscriptionId": "8trvB2ToNcIDqdaHWcDQ",
+      "authWorkflowType": "TRANSACTION",
+      "amountType": "FIXED",
+      "maxAmount": 100,
+      "frequency": "MONTHLY",
+      "expireAt": 2707278658948,
+      "subscriptionId": "OMS2510231120590275411169W"
+    },
+    "paymentDetails": [
+      {
+        "transactionId": "OM2510231120590355411908",
+        "paymentMode": "UPI_INTENT",
+        "timestamp": 1761198659035,
+        "amount": 100,
+        "payableAmount": 100,
+        "feeAmount": 0,
+        "state": "COMPLETED",
+        "instrument": {
+          "type": "ACCOUNT",
+          "maskedAccountNumber": "XXXXXXXXXX6082",
+          "ifsc": "HDFC0004118",
+          "accountType": "SAVINGS",
+          "bankId": "HDFC"
+        },
+        "rail": {
+          "type": "UPI",
+          "utr": "529636062291",
+          "vpa": "chethanrao5355@okhdfcbank",
+          "umn": "41c44975097c2b95e0634dcee10abced@okhdfcbank"
+        },
+        "splitInstruments": [
+          {
+            "instrument": {
+              "type": "ACCOUNT",
+              "maskedAccountNumber": "XXXXXXXXXX6082",
+              "ifsc": "HDFC0004118",
+              "accountType": "SAVINGS",
+              "bankId": "HDFC"
+            },
+            "rail": {
+              "type": "UPI",
+              "utr": "529636062291",
+              "vpa": "chethanrao5355@okhdfcbank",
+              "umn": "41c44975097c2b95e0634dcee10abced@okhdfcbank"
+            },
+            "amount": 100
+          }
+        ]
+      }
+    ]
+  },
+  "status": "PAYMENT_SUCCESS",
+  "updatedAt": {
+    "_seconds": 1761198695,
+    "_nanoseconds": 381000000
+  },
+  "refundTriggeredTime": {
+    "_seconds": 1761198727,
+    "_nanoseconds": 521000000
+  },
+  "refundTriggered": true,
+  "refundMerchantTransactionId": "8trvB2ToNcIDqdaHWcDQ-886263",
+  "refundDateTime": {
+    "_seconds": 1761198727,
+    "_nanoseconds": 821000000
+  },
+  "pendingWebhookEvent": "refund",
+  "refundResponse": {
+    "success": false,
+    "code": "ORDER_NOT_FOUND",
+    "message": "Invalid order details",
+    "data": {},
+    "refundStatusTime": {
+      "_seconds": 1761198727,
+      "_nanoseconds": 821000000
+    }
+  }
+}
